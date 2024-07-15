@@ -1,0 +1,46 @@
+buddha@MacBookPro:~$ cat fixwifi.sh 
+#!/bin/bash
+
+# Define WiFi credentials
+SSID="Home"
+PASSWORD="11112222"
+INTERFACE="wlp2s0"
+
+# Create wpa_supplicant configuration
+cat <<EOF | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=US
+
+network={
+    ssid="$SSID"
+    psk="$PASSWORD"
+}
+EOF
+
+# Terminate any running wpa_supplicant process
+sudo killall wpa_supplicant 2>/dev/null
+
+# Remove stale control interface file if it exists
+sudo rm -f /var/run/wpa_supplicant/$INTERFACE
+
+# Start wpa_supplicant
+sudo wpa_supplicant -B -i $INTERFACE -c /etc/wpa_supplicant/wpa_supplicant.conf
+
+# Check if dhclient is installed, and install if not
+if ! command -v dhclient &> /dev/null; then
+    echo "dhclient not found. Installing..."
+    sudo apt update
+    sudo apt install -y isc-dhcp-client
+fi
+
+# Obtain an IP address
+sudo dhclient $INTERFACE
+
+# Check if connected by pinging the router (replace with your router IP if needed)
+PING_TARGET="192.168.1.1"  # Adjust this if your router IP is different
+ping -c 4 $PING_TARGET
+
+# Check connection status
+ip addr show $INTERFACE
+buddha@MacBookPro:~$ 
